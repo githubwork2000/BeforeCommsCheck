@@ -1,3 +1,3 @@
 # BeforeCommsCheck
 
-This performs various checks against before communications. 
+This performs various checks before communications. 
