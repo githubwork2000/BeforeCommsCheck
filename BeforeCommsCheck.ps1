@@ -121,7 +121,6 @@ function Main {
     Get-ReplicationIP
     Get-DNSNames
     Get-ServerServices
-    Get-DNSNames
     Get-VCSReplication
 
 }
