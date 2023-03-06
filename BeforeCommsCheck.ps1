@@ -132,6 +132,9 @@ $scriptblock = {
         $gold = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname, $publicIP, $backupIP, $replicationIP, $dnsName, $services, $veritas
         return $gold
 
+        Get-DNSNames
+        Get-VCSReplication
+
     }
 } #End of scriptblock
 
