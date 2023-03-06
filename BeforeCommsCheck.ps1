@@ -136,7 +136,7 @@ return $gold
 }
 
 Main
-}
+} #End of scriptblock
 
 $nodes = "localhost"
     foreach($node in $nodes)
