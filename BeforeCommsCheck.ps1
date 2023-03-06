@@ -1,58 +1,57 @@
 $ErrorActionPreference = "silentlycontinue"
 
-Function Get-VCSReplication {
-    # Get all the VCS services on the local machine
-    $vcs = Get-WmiObject -Namespace Root\Citrix -Class Xen_VCSService
-    # Loop through each of the services detected
-    foreach ($vc in $vcs) {
-        # Get the current state
-        $state = $vc.GetState()
-        # Check if its running
-        if ($state -eq 0) {
-            # Display the hostname and active state
-            Write-Host "Hostname: $($vc.hostname) - Status: Active"
-            # Check if its replicating
-        }
-        elseif ($state -eq 3) {
-            # Display the hostname and Replicating status
-            Write-Host "Hostname: $($vc.hostname) - Status: Replicating"
-            # If it's neither running nor replicating then display as Not Running
-        }
-        else {
-            Write-Host "Hostname: $($vc.hostname) -Status: Not Running"
-        }
-    }
+function Get-Hostname {
+    $hostname = $env:computername
+    return $hostname
+}
+
+function Test-VeritasPath {
+Test-Path -Path "C:\Program Files\VERITAS\"
+}
+function Get-NonDefaultFileShares {
+    $defaultShares = @('ADMIN$', 'C$', 'IPC$')
+    Get-WmiObject -Class Win32_Share | Where-Object {$_.Type -eq 0 -and $defaultShares -notcontains $_.Name} | Select-Object Name, Path
 }
 
 function Get-ServerServices {
 
+
+    [string]$servertypes
+
     $services = Get-Service
 
     if ($services | Where-Object { $_.DisplayName -match "SQL Server" }) {
-        Write-Output "MSSQL"
+        #Write-Output "MSSQL"
+        $servertypes += "MSSQL-"
     }
 
     if ($services | Where-Object { $_.DisplayName -match "IIS" }) {
-        Write-Output "IIS"
+        $servertypes += "IIS-"
     }
 
     if ($services | Where-Object { $_.DisplayName -match "FTP" }) {
-        Write-Output "FTP"
+        $servertypes += "FTP-"
     }
 
-    if (Get-WmiObject Win32_Share ) {
-        Write-Output "File shares"
+    $defaultShares = @('ADMIN$', 'C$', 'IPC$')
+    if (Get-WmiObject -Class Win32_Share | Where-Object {$_.Type -eq 0 -and $defaultShares -notcontains $_.Name} | Select-Object Name, Path) {
+        $servertypes += "File-"
     }
 
     $printQueues = Get-WmiObject Win32_PrintQueue -ErrorAction SilentlyContinue
     if ($printQueues.Count -gt 0) {
-        Write-Output "Print queues"
+        $servertypes += "Print-"
     }
 
     if ((Get-Service  | Where-Object { $_.DisplayName -match "MQ" }) -or
-    (Get-Process -Name "msmqsvc" -ErrorAction SilentlyContinue)) {
-        Write-Output "MSMQ"
+    (Get-Process -Name "mqsvc" -ErrorAction SilentlyContinue)) {
+        $servertypes += "MSMQ-"
     }
+
+    $servertypes = $servertypes.Substring(0, $servertypes.Length - 1)
+    Write-Host $servertypes
+    Return $servertypes
+    
 }
 
 Function Get-PublicIpAddress { 
@@ -65,7 +64,7 @@ function Get-BackupIPAddress {
     $backupIP = (Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.IPAddress -like "10.*" })[0].IPAddress
     
     if (!$backupIP) {
-        Write-Output "No Backup IP Address found."
+        #Write-Output "No Backup IP Address found."
         return $null
     }
     
@@ -84,7 +83,7 @@ function Get-ReplicationIP {
     }
 
     # if no replicationip found, return null or write error message
-    Write-Error "Could not find the replication IP address."
+    #Write-Error "Could not find the replication IP address."
     return $null
 }
 
@@ -92,7 +91,7 @@ function Get-DNSNames {
     $dnsNames = @()
 
     # Get all IP addresses assigned to the server
-    $ips += (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" }) | Select IPAddress -ExpandProperty IPAddress
+    $ips += (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" }) | Select-Object IPAddress -ExpandProperty IPAddress
 
     # For each IP address, get the corresponding DNS name using nslookup
     foreach ($ip in $ips) {
@@ -115,14 +114,24 @@ function Main {
     ╚═══╝╚══╝ ╚╝ ╚══╝╚╝ ╚══╝╚═══╝╚══╝╚╩╩╝╚╩╩╝╚══╝╚═══╝╚╝╚╝╚══╝╚══╝╚╝╚╝
                                                                         
 '@
+    $hostname = Get-Hostname
+    $publicIP = Get-PublicIpAddress
+    $backupIP = Get-BackupIPAddress
+    $replicationIP = Get-ReplicationIP
+    $dnsName = Get-DNSNames
+    $services = Get-ServerServices
+    $veritas = Test-VeritasPath
 
-    Get-PublicIpAddress
-    Get-BackupIPAddress
-    Get-ReplicationIP
-    Get-DNSNames
-    Get-ServerServices
-    Get-VCSReplication
-
+    [PSCustomObject]@{
+        Hostname = $hostname
+        PublicIPAddress = $publicIP
+        BackupIPAddress = $backupIP
+        ReplicationIPAddress = $replicationIP
+        DNSName = $dnsName
+        ServerType = $services
+        VCSVVR = $veritas -join ', '
+    } | Export-Csv C:\lol3.csv
+    
 }
 
 Main
