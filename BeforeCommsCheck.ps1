@@ -4,52 +4,44 @@ function Get-Hostname {
     $hostname = $env:computername
     return $hostname
 }
-
 function Test-VeritasPath {
 Test-Path -Path "C:\Program Files\VERITAS\"
 }
-function Get-NonDefaultFileShares {
-    $defaultShares = @('ADMIN$', 'C$', 'IPC$')
-    Get-WmiObject -Class Win32_Share | Where-Object {$_.Type -eq 0 -and $defaultShares -notcontains $_.Name} | Select-Object Name, Path
-}
-
 function Get-ServerServices {
 
-
-    [string]$servertypes
+    [string]$servertypes = ""
 
     $services = Get-Service
 
     if ($services | Where-Object { $_.DisplayName -match "SQL Server" }) {
-        #Write-Output "MSSQL"
-        $servertypes += "MSSQL-"
+        $servertypes = $servertypes + "MSSQL-"
     }
 
     if ($services | Where-Object { $_.DisplayName -match "IIS" }) {
-        $servertypes += "IIS-"
+        $servertypes = $servertypes +  "IIS-"
     }
 
     if ($services | Where-Object { $_.DisplayName -match "FTP" }) {
-        $servertypes += "FTP-"
+        $servertypes = $servertypes +  "FTP-"
     }
 
     $defaultShares = @('ADMIN$', 'C$', 'IPC$')
     if (Get-WmiObject -Class Win32_Share | Where-Object {$_.Type -eq 0 -and $defaultShares -notcontains $_.Name} | Select-Object Name, Path) {
-        $servertypes += "File-"
+        $servertypes = $servertypes +  "File-"
     }
 
     $printQueues = Get-WmiObject Win32_PrintQueue -ErrorAction SilentlyContinue
     if ($printQueues.Count -gt 0) {
-        $servertypes += "Print-"
+        $servertypes = $servertypes +  "Print-"
     }
 
     if ((Get-Service  | Where-Object { $_.DisplayName -match "MQ" }) -or
     (Get-Process -Name "mqsvc" -ErrorAction SilentlyContinue)) {
-        $servertypes += "MSMQ-"
+        $servertypes = $servertypes +  "MSMQ-"
     }
 
     $servertypes = $servertypes.Substring(0, $servertypes.Length - 1)
-    Write-Host $servertypes
+    
     Return $servertypes
     
 }
@@ -130,7 +122,7 @@ function Main {
         DNSName = $dnsName
         ServerType = $services
         VCSVVR = $veritas -join ', '
-    } | Export-Csv C:\lol3.csv
+    } | Export-Csv C:\output.csv -NoTypeInformation
     
 }
 
