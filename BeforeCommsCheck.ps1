@@ -117,7 +117,7 @@ $scriptblock = {
         $replicationIP = Get-ReplicationIP
         $dnsName = Get-DNSNames
         $services = Get-ServerServices
-        $veritas = Get-DNSNames
+        $veritas = Test-VeritasPath
 
         [PSCustomObject]@{
             Hostname             = $hostname
