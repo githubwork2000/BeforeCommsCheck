@@ -1,3 +1,7 @@
+#$cred = Get-Credential
+
+$scriptblock = {
+
 $ErrorActionPreference = "silentlycontinue"
 
 function Get-Hostname {
@@ -49,7 +53,7 @@ function Get-ServerServices {
 Function Get-PublicIpAddress { 
     $WebClient = New-Object System.Net.WebClient
     $PublicIp = $WebClient.DownloadString("https://api.ipify.org")
-    return $PublicIp
+    return $PublicIp.IPAddressToString
 }
 
 function Get-BackupIPAddress {
@@ -105,7 +109,8 @@ function Main {
     ║╚═╝║║║═╣ ║║ ║╚╝║║║ ║║═╣║╚═╝║║╚╝║║║║║║║║║╠══║║╚═╝║║║║║║║═╣║╚═╗║╔╗╗
     ╚═══╝╚══╝ ╚╝ ╚══╝╚╝ ╚══╝╚═══╝╚══╝╚╩╩╝╚╩╩╝╚══╝╚═══╝╚╝╚╝╚══╝╚══╝╚╝╚╝
                                                                         
-'@
+'@ | Out-Null
+
     $hostname = Get-Hostname
     $publicIP = Get-PublicIpAddress
     $backupIP = Get-BackupIPAddress
@@ -122,13 +127,22 @@ function Main {
         DNSName = $dnsName
         ServerType = $services
         VCSVVR = $veritas -join ', '
-    } #| Export-Csv C:\output.csv -NoTypeInformation
+    } | Out-Null
 
-$NewLine = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname,$publicIP,$backupIP,$replicationIP,$dnsName,$services,$veritas
-$NewLine | add-content -path C:\output.csv
+$gold = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname,$publicIP,$backupIP,$replicationIP,$dnsName,$services,$veritas
+return $gold
 
     
 }
 
 Main
+}
 
+$nodes = "localhost"
+    foreach($node in $nodes)
+    {
+        Write-Host "`n"
+        Write-Host "Executing on node $node"
+        $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $cred
+        $gold | add-content -path C:\output.csv
+    }
