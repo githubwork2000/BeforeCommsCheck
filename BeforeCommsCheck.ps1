@@ -122,8 +122,13 @@ function Main {
         DNSName = $dnsName
         ServerType = $services
         VCSVVR = $veritas -join ', '
-    } | Export-Csv C:\output.csv -NoTypeInformation
+    } #| Export-Csv C:\output.csv -NoTypeInformation
+
+$NewLine = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname,$publicIP,$backupIP,$replicationIP,$dnsName,$services,$veritas
+$NewLine | add-content -path C:\output.csv
+
     
 }
 
 Main
+
