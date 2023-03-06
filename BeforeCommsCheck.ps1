@@ -9,8 +9,10 @@ $scriptblock = {
         return $hostname
     }
     function Test-VeritasPath {
-        Test-Path -Path "C:\Program Files\VERITAS\"
+        $veritasresult = Test-Path -Path "C:\Program Files\VERITAS\"
+        Return $veritasresult
     }
+
     function Get-ServerServices {
 
         [string]$servertypes = ""
@@ -99,17 +101,6 @@ $scriptblock = {
     }
 
     function Main {
-        Clear-Host
-        Write-Output @'
-
-    ╔══╗      ╔═╗           ╔═══╗                ╔═══╗╔╗          ╔╗  
-    ║╔╗║      ║╔╝           ║╔═╗║                ║╔═╗║║║          ║║  
-    ║╚╝╚╗╔══╗╔╝╚╗╔══╗╔═╗╔══╗║║ ╚╝╔══╗╔╗╔╗╔╗╔╗╔══╗║║ ╚╝║╚═╗╔══╗╔══╗║║╔╗
-    ║╔═╗║║╔╗║╚╗╔╝║╔╗║║╔╝║╔╗║║║ ╔╗║╔╗║║╚╝║║╚╝║║══╣║║ ╔╗║╔╗║║╔╗║║╔═╝║╚╝╝
-    ║╚═╝║║║═╣ ║║ ║╚╝║║║ ║║═╣║╚═╝║║╚╝║║║║║║║║║╠══║║╚═╝║║║║║║║═╣║╚═╗║╔╗╗
-    ╚═══╝╚══╝ ╚╝ ╚══╝╚╝ ╚══╝╚═══╝╚══╝╚╩╩╝╚╩╩╝╚══╝╚═══╝╚╝╚╝╚══╝╚══╝╚╝╚╝
-                                                                        
-'@ | Out-Null
 
         $hostname = Get-Hostname
         $publicIP = Get-PublicIpAddress
@@ -127,13 +118,14 @@ $scriptblock = {
             DNSName              = $dnsName
             ServerType           = $services
             VCSVVR               = $veritas -join ', '
-        } | Out-Null
+        }
 
         $gold = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname, $publicIP, $backupIP, $replicationIP, $dnsName, $services, $veritas
         return $gold
 
     }
 } #End of scriptblock
+
 
 $nodes = "localhost"
 foreach ($node in $nodes) {
@@ -142,4 +134,3 @@ foreach ($node in $nodes) {
     $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $cred
     $gold | add-content -path C:\output.csv
 }
-Main
