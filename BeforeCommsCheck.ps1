@@ -1,7 +1,5 @@
 #$cred = Get-Credential
 
-$scriptblock = {
-
 $ErrorActionPreference = "silentlycontinue"
 
 function Get-Hostname {
@@ -11,6 +9,7 @@ function Get-Hostname {
 function Test-VeritasPath {
 Test-Path -Path "C:\Program Files\VERITAS\"
 }
+
 function Get-ServerServices {
 
     [string]$servertypes = ""
@@ -53,21 +52,15 @@ function Get-ServerServices {
 Function Get-PublicIpAddress { 
     $WebClient = New-Object System.Net.WebClient
     $PublicIp = $WebClient.DownloadString("https://api.ipify.org")
-    return $PublicIp.IPAddressToString
+    return $PublicIp
 }
 
-function Get-BackupIPAddress {
-    $backupIP = (Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.IPAddress -like "10.*" })[0].IPAddress
-    
-    if (!$backupIP) {
-        #Write-Output "No Backup IP Address found."
-        return $null
-    }
-    
-    return $backupIP
+Function Get-BackupIPAddress {
+$backupIP = (Get-WmiObject Win32_NetworkAdapterConfiguration | Where-Object { $_.IPAddress -like "10.*" })[0].IPAddress
+    return
 }
 
-function Get-ReplicationIP {
+Function Get-ReplicationIP {
     $networkInterfaces = Get-NetIPConfiguration | Where-Object { $_.InterfaceAlias -notlike "*Loopback*" -and $_.InterfaceOperationalStatus -eq "Up" }
   
     # check each active network interface for replicationip
@@ -99,17 +92,6 @@ function Get-DNSNames {
 }
 
 function Main {
-    Clear-Host
-    Write-Output @'
-
-    ╔══╗      ╔═╗           ╔═══╗                ╔═══╗╔╗          ╔╗  
-    ║╔╗║      ║╔╝           ║╔═╗║                ║╔═╗║║║          ║║  
-    ║╚╝╚╗╔══╗╔╝╚╗╔══╗╔═╗╔══╗║║ ╚╝╔══╗╔╗╔╗╔╗╔╗╔══╗║║ ╚╝║╚═╗╔══╗╔══╗║║╔╗
-    ║╔═╗║║╔╗║╚╗╔╝║╔╗║║╔╝║╔╗║║║ ╔╗║╔╗║║╚╝║║╚╝║║══╣║║ ╔╗║╔╗║║╔╗║║╔═╝║╚╝╝
-    ║╚═╝║║║═╣ ║║ ║╚╝║║║ ║║═╣║╚═╝║║╚╝║║║║║║║║║╠══║║╚═╝║║║║║║║═╣║╚═╗║╔╗╗
-    ╚═══╝╚══╝ ╚╝ ╚══╝╚╝ ╚══╝╚═══╝╚══╝╚╩╩╝╚╩╩╝╚══╝╚═══╝╚╝╚╝╚══╝╚══╝╚╝╚╝
-                                                                        
-'@ | Out-Null
 
     $hostname = Get-Hostname
     $publicIP = Get-PublicIpAddress
@@ -119,30 +101,18 @@ function Main {
     $services = Get-ServerServices
     $veritas = Test-VeritasPath
 
-    [PSCustomObject]@{
-        Hostname = $hostname
-        PublicIPAddress = $publicIP
-        BackupIPAddress = $backupIP
-        ReplicationIPAddress = $replicationIP
-        DNSName = $dnsName
-        ServerType = $services
-        VCSVVR = $veritas -join ', '
-    } | Out-Null
-
-$gold = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname,$publicIP,$backupIP,$replicationIP,$dnsName,$services,$veritas
-return $gold
-
-    
+    $gold = "{0},{1},{2},{3},{4},{5},{6}" $hostname,$publicIP,$backupIP,$replicationIP,$dnsName,$services,$veritas
+    return $gold  
 }
 
 Main
-} #End of scriptblock
 
-$nodes = "localhost"
-    foreach($node in $nodes)
-    {
-        Write-Host "`n"
-        Write-Host "Executing on node $node"
-        $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $cred
-        $gold | add-content -path C:\output.csv
-    }
+
+#$nodes = "localhost"
+#    foreach($node in $nodes)
+#    {
+#        Write-Host "`n"
+#        Write-Host "Executing on node $node"
+#        $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $cred
+#        $gold | add-content -path C:\output.csv
+#    }
