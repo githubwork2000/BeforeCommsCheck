@@ -1,4 +1,4 @@
-#$global:cred = Get-Credential
+$global:cred = Get-Credential
 
 $scriptblock = {
 
@@ -113,13 +113,16 @@ $scriptblock = {
         return $gold
 
     }
+    Main
 } #End of scriptblock
 
-$nodes = @('localhost')
-foreach ($node in $nodes) {
-    Write-Host "`n"
-    Write-Host "Executing on node $node"
-    $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $global:cred
-    $gold | add-content -path C:\output.csv
-}
-Main
+
+
+$s = New-PSSession localhost -Credential $global:cred
+$j = Invoke-Command -Session $s -ScriptBlock $scriptblock -AsJob
+$j | Wait-Job
+
+Receive-Job -Id 1
+
+Get-PSSession | Disconnect-PSSession
+Get-PSSession | Remove-PSSession
