@@ -1,4 +1,4 @@
-#$cred = Get-Credential
+#$global:cred = Get-Credential
 
 $scriptblock = {
 
@@ -107,32 +107,19 @@ $scriptblock = {
         $replicationIP = Get-ReplicationIP
         $dnsName = Get-DNSNames
         $services = Get-ServerServices
-        $veritas = Get-DNSNames
-
-        [PSCustomObject]@{
-            Hostname             = $hostname
-            PublicIPAddress      = $publicIP
-            BackupIPAddress      = $backupIP
-            ReplicationIPAddress = $replicationIP
-            DNSName              = $dnsName
-            ServerType           = $services
-            VCSVVR               = $veritas -join ', '
-        }
+        $veritas = Test-VeritasPath
 
         $gold = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname, $publicIP, $backupIP, $replicationIP, $dnsName, $services, $veritas
         return $gold
 
-        Get-DNSNames
-        Get-VCSReplication
-
     }
 } #End of scriptblock
 
-$nodes = "localhost"
+$nodes = @('localhost')
 foreach ($node in $nodes) {
     Write-Host "`n"
     Write-Host "Executing on node $node"
-    $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $cred
+    $gold = Invoke-Command -ComputerName "$node" -scriptblock $scriptblock -Credential $global:cred
     $gold | add-content -path C:\output.csv
 }
 Main
