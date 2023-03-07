@@ -1,4 +1,4 @@
-$global:cred = Get-Credential
+#$global:cred = Get-Credential
 
 $scriptblock = {
 
@@ -18,15 +18,15 @@ $scriptblock = {
 
         $services = Get-Service
 
-        if ($services | Where-Object { $_.DisplayName -match "SQL Server" }) {
+        if ($services | Where-Object { $_.DisplayName -match "SQL Server" -and $_.Status -match "Running"}) {
             $servertypes = $servertypes + "MSSQL-"
         }
 
-        if ($services | Where-Object { $_.DisplayName -match "IIS" }) {
+        if ($services | Where-Object { $_.DisplayName -match "IIS" -and $_.Status -match "Running"}) {
             $servertypes = $servertypes + "IIS-"
         }
 
-        if ($services | Where-Object { $_.DisplayName -match "FTP" }) {
+        if ($services | Where-Object { $_.DisplayName -match "FTP" -and $_.Status -match "Running"}) {
             $servertypes = $servertypes + "FTP-"
         }
 
@@ -40,9 +40,17 @@ $scriptblock = {
             $servertypes = $servertypes + "Print-"
         }
 
-        if ((Get-Service  | Where-Object { $_.DisplayName -match "MQ" }) -or
-    (Get-Process -Name "mqsvc" -ErrorAction SilentlyContinue)) {
+        if ((Get-Service  | Where-Object { $_.DisplayName -match "MQ" -and $_.Status -match "Running" }) -or
+        (Get-Process -Name "mqsvc" -ErrorAction SilentlyContinue)) {
             $servertypes = $servertypes + "MSMQ-"
+        }
+
+        if ($services | Where-Object { $_.Name -match "SMTPSVC" -and $_.Status -match "Running" }) {
+            $servertypes = $servertypes + "SMTP-"
+        }
+
+        if ($services | Where-Object { $_.Name -eq "OracleServiceORCL" -and $_.Status -match "Running" }) {
+            $servertypes = $servertypes + "Oracle-"
         }
 
         $servertypes = $servertypes.Substring(0, $servertypes.Length - 1)
@@ -122,7 +130,7 @@ $s = New-PSSession localhost -Credential $global:cred
 $j = Invoke-Command -Session $s -ScriptBlock $scriptblock -AsJob
 $j | Wait-Job
 
-Receive-Job -Id 1
+Receive-Job -Id 71
 
 Get-PSSession | Disconnect-PSSession
 Get-PSSession | Remove-PSSession
