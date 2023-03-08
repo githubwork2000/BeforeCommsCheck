@@ -107,17 +107,58 @@ $scriptblock = {
         return $dnsNames
     }
 
+    function Get-NetworkAdapterInfo {
+        $adapters = Get-NetIPConfiguration | Where-Object { $null -ne $_.IPv4Address -and $_.InterfaceAlias -notlike '*loopback*' -and $_.IPv4Address.IPAddressToString -notmatch '^169\.254\.' }
+        $adapterInfo = foreach ($adapter in $adapters) {
+          [PSCustomObject]@{
+            Name = $adapter.InterfaceAlias
+            IPAddress = $adapter | Select-Object IPv4Address -ExpandProperty IPv4Address
+          }
+        }
+        return $adapterInfo
+      }
+    
+
+      function Get-NetworkStuff {
+        $nics = @()
+        $final = ""
+                    $nicinfo = @(Get-WmiObject Win32_NetworkAdapter -ErrorAction STOP | Where-Object {$_.PhysicalAdapter -and $_.NetEnabled -eq $true} |
+                        Select-Object Name,AdapterType,MACAddress,
+                        @{Name='ConnectionName';Expression={$_.NetConnectionID}})
+        
+                    $nwinfo = Get-WmiObject Win32_NetworkAdapterConfiguration -ErrorAction STOP |
+                        Select-Object Description, DHCPServer,  
+                        @{Name='IpAddress';Expression={$_.IpAddress -join '; '}},  
+                        @{Name='DNSServerSearchOrder';Expression={$_.DNSServerSearchOrder -join '; '}}
+        
+                    foreach ($nic in $nicinfo)
+                    {
+                        $nicObject = New-Object PSObject
+                        $nicObject | Add-Member NoteProperty -Name "Connection Name" -Value $nic.connectionname
+                        $ipaddress = ($nwinfo | Where-Object {$_.Description -eq $nic.Name}).IpAddress
+                        $nicObject | Add-Member NoteProperty -Name "IPAddress" -Value $ipaddress
+        
+                        $nics += $nicObject
+                    $final +=  $nic.connectionname + '-' + $ipaddress + '-'
+        
+                    }
+                    return $final
+      }
+
     function Main {
 
         $hostname = Get-Hostname
+        #$adapters = Get-NetworkAdapterInfo
         $publicIP = Get-PublicIpAddress
         $backupIP = Get-BackupIPAddress
         $replicationIP = Get-ReplicationIP
         $dnsName = Get-DNSNames
         $services = Get-ServerServices
         $veritas = Test-VeritasPath
+        $network = Get-NetworkStuff
+        #$network = $adapters | ForEach-Object { $adapter += "$_ "} 
 
-        $gold = "{0},{1},{2},{3},{4},{5},{6}" -f $hostname, $publicIP, $backupIP, $replicationIP, $dnsName, $services, $veritas
+        $gold = "{0},{1},{2},{3},{4},{5},{6},{7}" -f $hostname, $publicIP, $backupIP, $replicationIP, $dnsName, $services, $veritas, $network
         return $gold
 
     }
@@ -130,7 +171,7 @@ $s = New-PSSession localhost -Credential $global:cred
 $j = Invoke-Command -Session $s -ScriptBlock $scriptblock -AsJob
 $j | Wait-Job
 
-Receive-Job -Id 71
+Receive-Job -Id 105
 
 Get-PSSession | Disconnect-PSSession
 Get-PSSession | Remove-PSSession
