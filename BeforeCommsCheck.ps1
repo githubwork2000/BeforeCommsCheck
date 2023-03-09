@@ -9,6 +9,7 @@ $scriptblock = {
         return $hostname
     }
 
+    #May need to run vxprint afterwards
     function Test-VeritasPath {
         Test-Path -Path "C:\Program Files\VERITAS\"
     }
@@ -32,13 +33,19 @@ $scriptblock = {
 
         $defaultShares = @('ADMIN$', 'C$', 'IPC$')
         if (Get-WmiObject -Class Win32_Share | Where-Object { $_.Type -eq 0 -and $defaultShares -notcontains $_.Name } | Select-Object Name, Path) {
-            $servertypes = $servertypes + "File-"
+            $servertypes = $servertypes + "CIFS-"
+        }
+
+        if (Get-NfsShare) {
+        $servertypes = $servertypes + "NFS-"
         }
 
         $printQueues = Get-WmiObject Win32_PrintQueue -ErrorAction SilentlyContinue
         if ($printQueues.Count -gt 0) {
             $servertypes = $servertypes + "Print-"
         }
+
+
 
         if ((Get-Service  | Where-Object { $_.DisplayName -match "MQ" -and $_.Status -match "Running" }) -or
         (Get-Process -Name "mqsvc" -ErrorAction SilentlyContinue)) {
@@ -115,7 +122,7 @@ $scriptblock = {
         }
         return $adapterInfo
       }
-    
+
 
       function Get-NetworkStuff {
         $nics = @()
@@ -138,7 +145,7 @@ $scriptblock = {
         
                         $nics += $nicObject
                     $final +=  $nic.connectionname + '-' + $ipaddress + '-'
-        
+                    $final = $final.Substring(0, $final.Length - 1)
                     }
                     return $final
       }
@@ -166,11 +173,38 @@ $scriptblock = {
 
 
 
-$s = New-PSSession localhost -Credential $global:cred
-$j = Invoke-Command -Session $s -ScriptBlock $scriptblock -AsJob
-$j | Wait-Job
+#$s = New-PSSession localhost -Credential $global:cred
+##$j = Invoke-Command -Session $s -ScriptBlock $scriptblock -AsJob
+#$j | Wait-Job
 
-Receive-Job -Id 131
+#Receive-Job -Id 147
 
-Get-PSSession | Disconnect-PSSession
-Get-PSSession | Remove-PSSession
+#Get-PSSession | Disconnect-PSSession
+#Get-PSSession | Remove-PSSession
+
+
+function Get-RemoteHostnameAndDate {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ComputerNameFile
+    )
+    
+    $computernames = Get-Content -Path $ComputerNameFile
+
+    foreach ($computername in $computernames) {
+        try {
+            $session = New-PSSession -ComputerName $computername
+            $result = Invoke-Command -Session $session -ScriptBlock $scriptblock
+            $result | Out-File -FilePath $HOME\myresults.txt -Append
+            Write-Output $result
+        }
+        catch {
+            Write-Warning "Could not connect to $computername"
+        }
+        finally {
+            Remove-PSSession -Session $session -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Get-RemoteHostnameAndDate computers.txt
