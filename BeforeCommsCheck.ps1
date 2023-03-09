@@ -45,8 +45,6 @@ $scriptblock = {
             $servertypes = $servertypes + "Print-"
         }
 
-
-
         if ((Get-Service  | Where-Object { $_.DisplayName -match "MQ" -and $_.Status -match "Running" }) -or
         (Get-Process -Name "mqsvc" -ErrorAction SilentlyContinue)) {
             $servertypes = $servertypes + "MSMQ-"
@@ -172,7 +170,6 @@ $scriptblock = {
 } #End of scriptblock
 
 
-
 #$s = New-PSSession localhost -Credential $global:cred
 ##$j = Invoke-Command -Session $s -ScriptBlock $scriptblock -AsJob
 #$j | Wait-Job
@@ -183,7 +180,7 @@ $scriptblock = {
 #Get-PSSession | Remove-PSSession
 
 
-function Get-RemoteHostnameAndDate {
+function Get-RemoteInformation {
     param (
         [Parameter(Mandatory = $true)]
         [string]$ComputerNameFile
@@ -207,4 +204,4 @@ function Get-RemoteHostnameAndDate {
     }
 }
 
-Get-RemoteHostnameAndDate computers.txt
+Get-RemoteInformation computers.txt
