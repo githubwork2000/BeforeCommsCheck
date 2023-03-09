@@ -13,6 +13,16 @@ $scriptblock = {
     function Test-VeritasPath {
         Test-Path -Path "C:\Program Files\VERITAS\"
     }
+
+    function Test-VeritasVxprint {
+        if (vxprint) {
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+
     function Get-ServerServices {
 
         [string]$servertypes = ""
@@ -131,8 +141,9 @@ $scriptblock = {
         
                     $nwinfo = Get-WmiObject Win32_NetworkAdapterConfiguration -ErrorAction STOP |
                         Select-Object Description, 
-                        @{Name='IpAddress';Expression={$_.IpAddress -join '; '}},  
-                        @{Name='DNSServerSearchOrder';Expression={$_.DNSServerSearchOrder -join '; '}}
+                        #@{Name='IpAddress';Expression={$_.IpAddress -join '; '}}, 
+                        @{Name='IpAddress';Expression={$_.IpAddress[0]}}
+                        #@{Name='DNSServerSearchOrder';Expression={$_.DNSServerSearchOrder -join '; '}}
         
                     foreach ($nic in $nicinfo)
                     {
@@ -142,9 +153,10 @@ $scriptblock = {
                         $nicObject | Add-Member NoteProperty -Name "IPAddress" -Value $ipaddress
         
                         $nics += $nicObject
-                    $final +=  $nic.connectionname + '-' + $ipaddress + '-'
-                    $final = $final.Substring(0, $final.Length - 1)
+                    $final +=  $nic.connectionname + '-' + $ipaddress + ';'
+                    
                     }
+                    $final = $final.Substring(0, $final.Length - 1)
                     return $final
       }
 
@@ -157,7 +169,7 @@ $scriptblock = {
         #$replicationIP = Get-ReplicationIP
         $dnsName = Get-DNSNames
         $services = Get-ServerServices
-        $veritas = Test-VeritasPath
+        $veritas = Test-VeritasVxprint
         $network = Get-NetworkStuff
         #$network = $adapters | ForEach-Object { $adapter += "$_ "} 
 
@@ -179,6 +191,7 @@ $scriptblock = {
 #Get-PSSession | Disconnect-PSSession
 #Get-PSSession | Remove-PSSession
 
+$ErrorActionPreference = "silentlycontinue"
 
 function Get-RemoteInformation {
     param (
@@ -196,7 +209,8 @@ function Get-RemoteInformation {
             Write-Output $result
         }
         catch {
-            Write-Warning "Could not connect to $computername"
+            $computername | Out-File -FilePath $HOME\noconnection.txt -Append
+            Write-Output "Could not connect to $computername"
         }
         finally {
             Remove-PSSession -Session $session -ErrorAction SilentlyContinue
